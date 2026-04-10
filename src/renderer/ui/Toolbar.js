@@ -4,11 +4,12 @@ export class Toolbar {
     this._onSourceChange = null;
     this._onSelectRegion = null;
 
-    this._sourceSelect = el.querySelector('#source-select');
-    this._btnRefresh   = el.querySelector('#btn-refresh');
-    this._btnRegion    = el.querySelector('#btn-select-region');
-    this._regionInfo   = el.querySelector('#region-info');
-    this._fpsDisplay   = el.querySelector('#fps-display');
+    this._sourceSelect  = el.querySelector('#source-select');
+    this._btnRefresh    = el.querySelector('#btn-refresh');
+    this._btnRegion     = el.querySelector('#btn-select-region');
+    this._regionInfo    = el.querySelector('#region-info');
+    this._fpsDisplay    = el.querySelector('#fps-display');
+    this._chkAlwaysOnTop = el.querySelector('#chk-always-on-top');
 
     this._sourceSelect.addEventListener('change', () => {
       this._onSourceChange?.(this._sourceSelect.value);
@@ -16,6 +17,9 @@ export class Toolbar {
     this._btnRefresh.addEventListener('click', () => this.loadSources());
     this._btnRegion.addEventListener('click', () => {
       this._onSelectRegion?.(this._sourceSelect.value);
+    });
+    this._chkAlwaysOnTop.addEventListener('change', () => {
+      window.screenScope.setAlwaysOnTop(this._chkAlwaysOnTop.checked);
     });
 
     this.loadSources();

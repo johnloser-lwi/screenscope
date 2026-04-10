@@ -67,8 +67,23 @@ html, body {
   margin-left: 4px;
 }
 
-#fps-display {
+#always-on-top-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--text-dim);
+  cursor: pointer;
   margin-left: auto;
+  -webkit-app-region: no-drag;
+}
+
+#always-on-top-label input[type="checkbox"] {
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+#fps-display {
   font-size: 11px;
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;

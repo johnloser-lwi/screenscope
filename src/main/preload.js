@@ -14,5 +14,7 @@ contextBridge.exposeInMainWorld('screenScope', {
   confirmRegion: (region) => ipcRenderer.send('region-confirmed', region),
   cancelRegionSelect: () => ipcRenderer.send('region-cancelled'),
 
+  setAlwaysOnTop: (flag) => ipcRenderer.send('set-always-on-top', flag),
+
   platform: () => process.platform,
 });

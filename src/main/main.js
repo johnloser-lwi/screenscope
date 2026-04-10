@@ -112,6 +112,10 @@ function createSelectorWindow(sourceId) {
 // IPC handlers
 ipcMain.handle('get-sources', () => getSources());
 
+ipcMain.on('set-always-on-top', (_event, flag) => {
+  if (mainWindow) mainWindow.setAlwaysOnTop(flag);
+});
+
 ipcMain.handle('start-region-select', (_event, sourceId) => {
   createSelectorWindow(sourceId);
 });
