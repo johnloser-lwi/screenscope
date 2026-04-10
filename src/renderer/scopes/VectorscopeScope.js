@@ -124,9 +124,19 @@ export class VectorscopeScope {
     const gl = this.gl;
     const cw = this.canvas.width;
     const ch = this.canvas.height;
+
+    // Clear the full canvas first
     gl.viewport(0, 0, cw, ch);
     gl.clearColor(0.04, 0.04, 0.04, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT);
+
+    // Render into a centered square — matches SVG overlay's default
+    // preserveAspectRatio="xMidYMid meet" so graticule and data align
+    // at any window size.
+    const size = Math.min(cw, ch);
+    const xOff = Math.floor((cw - size) / 2);
+    const yOff = Math.floor((ch - size) / 2);
+    gl.viewport(xOff, yOff, size, size);
 
     // Find max value for normalisation
     let maxVal = 1;
