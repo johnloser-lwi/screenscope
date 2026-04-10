@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ScreenScope</title>
+  <link rel="stylesheet" href="./ui/styles.css" />
+</head>
+<body>
+  <div id="app">
+
+    <!-- Toolbar -->
+    <div id="toolbar">
+      <select id="source-select"></select>
+      <button id="btn-refresh" title="Refresh source list">↺</button>
+      <button id="btn-select-region">Select Region</button>
+      <span id="region-info"></span>
+      <span id="fps-display">— fps</span>
+    </div>
+
+    <!-- Vectorscope -->
+    <div id="vectorscope-section">
+      <canvas id="canvas-vectorscope"></canvas>
+      <div class="graticule" id="graticule"></div>
+      <span class="scope-label">Vectorscope</span>
+
+      <div id="empty-state">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="1.5">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M12 8v4l3 3"/>
+        </svg>
+        <span>Select a source and region to begin</span>
+      </div>
+    </div>
+
+    <!-- Waveforms -->
+    <div id="waveform-row">
+      <div class="waveform-section">
+        <canvas id="canvas-waveform-rgb"></canvas>
+        <span class="scope-label">Waveform &mdash; RGB</span>
+      </div>
+      <div class="waveform-section">
+        <canvas id="canvas-waveform-luma"></canvas>
+        <span class="scope-label">Waveform &mdash; Luma</span>
+      </div>
+    </div>
+
+  </div>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

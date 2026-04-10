@@ -1,0 +1,145 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0e0e0e;
+  --surface: #1a1a1a;
+  --border: #2e2e2e;
+  --text: #cccccc;
+  --text-dim: #666666;
+  --accent: #00d4ff;
+  --toolbar-h: 42px;
+}
+
+html, body {
+  width: 100%; height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 13px;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  display: grid;
+  grid-template-rows: var(--toolbar-h) 55fr 45fr;
+  width: 100%; height: 100%;
+}
+
+/* ── Toolbar ──────────────────────────────────── */
+#toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  -webkit-app-region: drag; /* allow window drag on macOS */
+}
+
+#toolbar > * { -webkit-app-region: no-drag; }
+
+#toolbar select,
+#toolbar button {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+#toolbar select:focus,
+#toolbar button:focus { outline: 1px solid var(--accent); }
+
+#toolbar button:hover { border-color: var(--accent); color: var(--accent); }
+
+#toolbar button#btn-select-region {
+  background: #0a2530;
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+#region-info {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-left: 4px;
+}
+
+#fps-display {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+#fps-display.active { color: #44cc44; }
+
+/* ── Vectorscope (top section) ────────────────── */
+#vectorscope-section {
+  position: relative;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+}
+
+#vectorscope-section canvas,
+#vectorscope-section .graticule {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+}
+
+.scope-label {
+  position: absolute;
+  top: 6px; left: 10px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* ── Waveform row (bottom section) ────────────── */
+#waveform-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+
+.waveform-section {
+  position: relative;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.waveform-section:first-child {
+  border-right: 1px solid var(--border);
+}
+
+.waveform-section canvas {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+}
+
+/* ── Empty state ──────────────────────────────── */
+#empty-state {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--text-dim);
+  font-size: 13px;
+  pointer-events: none;
+}
+
+#empty-state svg { opacity: 0.3; }
+
+#empty-state.hidden { display: none; }
