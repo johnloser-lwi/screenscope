@@ -17,27 +17,27 @@ out vec4 fragColor;
 
 void main() {
   uint count = texture(u_histogram, v_uv).r;
-  float density = min(float(count) / u_maxVal * u_gain, 1.0);
+  float density = min(log2(float(count) + 1.0) / log2(u_maxVal + 1.0) * u_gain, 1.0);
 
-  // Derive hue from Cb/Cr position — BT.601 inverse at Y=1, 2x chroma boost
+  // Derive hue from Cb/Cr position — BT.709 inverse at Y=1, 2x chroma boost
   float cb = v_uv.x - 0.5;
   float cr = v_uv.y - 0.5;
   vec3 hue;
-  hue.r = clamp(1.0 + 1.402 * cr * 2.0, 0.0, 1.0);
-  hue.g = clamp(1.0 - (0.344 * cb + 0.714 * cr) * 2.0, 0.0, 1.0);
-  hue.b = clamp(1.0 + 1.772 * cb * 2.0, 0.0, 1.0);
+  hue.r = clamp(1.0 + 1.5748 * cr * 2.0, 0.0, 1.0);
+  hue.g = clamp(1.0 - (0.1873 * cb + 0.4681 * cr) * 2.0, 0.0, 1.0);
+  hue.b = clamp(1.0 + 1.8556 * cb * 2.0, 0.0, 1.0);
 
   fragColor = vec4(hue * density, 1.0);
 }`;
 
-// Standard 75% color bar Cb/Cr targets (BT.601, 0-255 range)
+// 75% color bar Cb/Cr targets — BT.709 full-range (matches DaVinci Resolve for sRGB/Rec.709)
 const TARGETS = [
-  { label: 'R',  cb:  90, cr: 240, color: '#ff4444' },
-  { label: 'Yl', cb:  54, cr: 146, color: '#ffff44' },
-  { label: 'G',  cb:  54, cr:  34, color: '#44ff44' },
-  { label: 'Cy', cb: 166, cr:  16, color: '#44ffff' },
-  { label: 'B',  cb: 202, cr: 110, color: '#4444ff' },
-  { label: 'Mg', cb: 202, cr: 222, color: '#ff44ff' },
+  { label: 'R',  cb: 106, cr: 224, color: '#ff4444' },
+  { label: 'Yl', cb:  32, cr: 137, color: '#ffff44' },
+  { label: 'G',  cb:  54, cr:  41, color: '#44ff44' },
+  { label: 'Cy', cb: 150, cr:  32, color: '#44ffff' },
+  { label: 'B',  cb: 224, cr: 119, color: '#4444ff' },
+  { label: 'Mg', cb: 202, cr: 215, color: '#ff44ff' },
 ];
 
 export class VectorscopeScope {
@@ -73,7 +73,7 @@ export class VectorscopeScope {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
-    this._gain = 8.0;
+    this._gain = 2.0;
   }
 
   _buildGraticule() {
@@ -97,8 +97,7 @@ export class VectorscopeScope {
     svg += `<line x1="128" y1="8" x2="128" y2="248" stroke="rgba(255,255,255,0.15)" stroke-width="0.5"/>`;
     svg += `<line x1="8"   y1="128" x2="248" y2="128" stroke="rgba(255,255,255,0.15)" stroke-width="0.5"/>`;
 
-    // Skin tone I-line (from center through ~123° on standard vectorscope)
-    // Normalised: skin tone line at angle ~132.5° in standard display
+    // Skin tone I-line — NTSC I-axis at 132.5° (atan2(dCr, dCb) of the I-axis direction)
     const skinAngle = (132.5 * Math.PI) / 180;
     const sx = cx + Math.cos(skinAngle) * 120;
     const sy = cy - Math.sin(skinAngle) * 120;

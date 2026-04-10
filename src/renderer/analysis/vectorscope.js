@@ -15,9 +15,9 @@ export function computeVectorscope(rgba, width, height) {
     const G = rgba[idx + 1] / 255;
     const B = rgba[idx + 2] / 255;
 
-    // BT.601 Cb/Cr (broadcast vectorscope standard)
-    const Cb = (-0.16874 * R - 0.33126 * G + 0.5 * B) * 255 + 128;
-    const Cr = ( 0.5     * R - 0.41869 * G - 0.08131 * B) * 255 + 128;
+    // BT.709 Cb/Cr — matches sRGB/Rec.709 screen content (DaVinci Resolve default)
+    const Cb = (-0.11457 * R - 0.38543 * G + 0.5    * B) * 255 + 128;
+    const Cr = ( 0.5    * R - 0.45415 * G - 0.04585 * B) * 255 + 128;
 
     const cbI = Math.max(0, Math.min(255, (Cb + 0.5) | 0));
     const crI = Math.max(0, Math.min(255, (Cr + 0.5) | 0));
