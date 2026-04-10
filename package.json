@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "concurrently -k \"vite\" \"electron .\"",
     "build": "vite build && electron-builder",
-    "dist:mac": "vite build && electron-builder --mac",
-    "dist:win": "vite build && electron-builder --win"
+    "dist:mac": "vite build && electron-builder --mac --publish never",
+    "dist:win": "vite build && electron-builder --win --publish never"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",
