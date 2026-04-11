@@ -31,7 +31,7 @@ html, body {
 #toolbar     { display: none; }
 #status-bar  { display: none; }
 
-body.darwin  #toolbar    { display: flex; }
+body.darwin  #toolbar    { display: flex; padding-left: 80px; }
 body.win32   #status-bar { display: flex; }
 body.linux   #status-bar { display: flex; }
 
