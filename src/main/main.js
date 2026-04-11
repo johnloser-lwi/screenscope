@@ -1,5 +1,6 @@
 const {
   app,
+  Menu,
   BrowserWindow,
   ipcMain,
   screen,
@@ -14,6 +15,117 @@ const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 let mainWindow = null;
 let selectorWindow = null;
 
+// ── Menu state ────────────────────────────────────────────
+let activeSourceId = null;
+const scopeVisibility = { vectorscope: true, rgb: true, luma: true };
+let alwaysOnTop = false;
+
+async function buildMenu() {
+  let sources = [];
+  try { sources = await getSources(); } catch (_) { /* ignore */ }
+
+  const sourceItems = sources.map(s => ({
+    label: s.name,
+    type: 'radio',
+    checked: s.id === activeSourceId,
+    click: () => {
+      activeSourceId = s.id;
+      if (mainWindow) mainWindow.webContents.send('menu-action', { type: 'source-selected', sourceId: s.id });
+      buildMenu(); // rebuild to update radio checkmark
+    },
+  }));
+
+  const template = [
+    {
+      label: 'Sources',
+      submenu: [
+        ...(sourceItems.length
+          ? sourceItems
+          : [{ label: 'No sources found', enabled: false }]),
+        { type: 'separator' },
+        { label: 'Refresh Sources', click: () => buildMenu() },
+        { type: 'separator' },
+        {
+          label: 'Select Region',
+          enabled: !!activeSourceId,
+          click: () => {
+            if (activeSourceId) createSelectorWindow(activeSourceId);
+          },
+        },
+      ],
+    },
+    {
+      label: 'View',
+      submenu: [
+        {
+          label: 'Always on Top',
+          type: 'checkbox',
+          checked: alwaysOnTop,
+          click: (item) => {
+            alwaysOnTop = item.checked;
+            if (mainWindow) mainWindow.setAlwaysOnTop(alwaysOnTop);
+          },
+        },
+        { type: 'separator' },
+        {
+          label: 'Vectorscope',
+          type: 'checkbox',
+          checked: scopeVisibility.vectorscope,
+          click: (item) => {
+            scopeVisibility.vectorscope = item.checked;
+            if (mainWindow) mainWindow.webContents.send('menu-action', {
+              type: 'scope-toggle', scope: 'vectorscope-section', visible: item.checked,
+            });
+          },
+        },
+        {
+          label: 'RGB Waveform',
+          type: 'checkbox',
+          checked: scopeVisibility.rgb,
+          click: (item) => {
+            scopeVisibility.rgb = item.checked;
+            if (mainWindow) mainWindow.webContents.send('menu-action', {
+              type: 'scope-toggle', scope: 'waveform-rgb', visible: item.checked,
+            });
+          },
+        },
+        {
+          label: 'Luma Waveform',
+          type: 'checkbox',
+          checked: scopeVisibility.luma,
+          click: (item) => {
+            scopeVisibility.luma = item.checked;
+            if (mainWindow) mainWindow.webContents.send('menu-action', {
+              type: 'scope-toggle', scope: 'waveform-luma', visible: item.checked,
+            });
+          },
+        },
+      ],
+    },
+  ];
+
+  if (process.platform === 'darwin') {
+    template.unshift({
+      label: app.name,
+      submenu: [
+        { role: 'about' },
+        { type: 'separator' },
+        { role: 'services' },
+        { type: 'separator' },
+        { role: 'hide' },
+        { role: 'hideOthers' },
+        { role: 'unhide' },
+        { type: 'separator' },
+        { role: 'quit' },
+      ],
+    });
+  } else {
+    template.push({ label: 'App', submenu: [{ role: 'quit' }] });
+  }
+
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+}
+
 function createMainWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
@@ -21,7 +133,6 @@ function createMainWindow() {
     minWidth: 300,
     minHeight: 200,
     backgroundColor: '#0e0e0e',
-    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -38,6 +149,8 @@ function createMainWindow() {
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
+
+  buildMenu();
 }
 
 async function checkScreenRecordingPermission() {
@@ -111,8 +224,10 @@ function createSelectorWindow(sourceId) {
 
 // IPC handlers
 ipcMain.handle('get-sources', () => getSources());
+ipcMain.on('refresh-sources', () => buildMenu());
 
 ipcMain.on('set-always-on-top', (_event, flag) => {
+  alwaysOnTop = flag;
   if (mainWindow) mainWindow.setAlwaysOnTop(flag);
 });
 

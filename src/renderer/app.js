@@ -1,16 +1,16 @@
-import { Toolbar } from './ui/Toolbar.js';
 import { CaptureEngine } from './capture/CaptureEngine.js';
 import { VectorscopeScope } from './scopes/VectorscopeScope.js';
 import { WaveformScope } from './scopes/WaveformScope.js';
 import { WaveformRGBScope } from './scopes/WaveformRGBScope.js';
 
 // ── DOM refs ──────────────────────────────────────────────
-const toolbarEl   = document.getElementById('toolbar');
 const emptyState  = document.getElementById('empty-state');
 const canvasVec   = document.getElementById('canvas-vectorscope');
 const graticule   = document.getElementById('graticule');
 const canvasRGB   = document.getElementById('canvas-waveform-rgb');
 const canvasLuma  = document.getElementById('canvas-waveform-luma');
+const regionInfo  = document.getElementById('region-info');
+const fpsDisplay  = document.getElementById('fps-display');
 
 // ── Scopes ────────────────────────────────────────────────
 const scopeVec  = new VectorscopeScope(canvasVec, graticule);
@@ -34,22 +34,18 @@ ro.observe(canvasVec.parentElement);
 ro.observe(canvasLuma.parentElement);
 ro.observe(canvasRGB.parentElement);
 
-// ── Scope toggles ─────────────────────────────────────────
-function updateWaveformLayout() {
-  const rgbVisible  = !document.getElementById('waveform-rgb').classList.contains('hidden');
-  const lumaVisible = !document.getElementById('waveform-luma').classList.contains('hidden');
-  const row = document.getElementById('waveform-row');
-  row.classList.toggle('hidden', !rgbVisible && !lumaVisible);
-}
-
-document.querySelectorAll('.scope-toggle').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const section = document.getElementById(btn.dataset.target);
-    const isHidden = section.classList.toggle('hidden');
-    btn.classList.toggle('active', !isHidden);
-    updateWaveformLayout();
-  });
-});
+// ── FPS counter ───────────────────────────────────────────
+let frameCount = 0;
+let lastFpsTick = performance.now();
+setInterval(() => {
+  const now = performance.now();
+  const elapsed = (now - lastFpsTick) / 1000;
+  const fps = (frameCount / elapsed).toFixed(0);
+  fpsDisplay.textContent = `${fps} fps`;
+  fpsDisplay.classList.toggle('active', frameCount > 0);
+  frameCount = 0;
+  lastFpsTick = now;
+}, 1000);
 
 // ── Worker ────────────────────────────────────────────────
 const worker = new Worker(
@@ -64,7 +60,7 @@ worker.onmessage = ({ data }) => {
   scopeVec.render(vectorData);
   scopeLuma.render(lumaData, width);
   scopeRGB.render(rData, gData, bData, width);
-  toolbar.tickFrame();
+  frameCount++;
   pendingFrame = false;
 };
 
@@ -72,41 +68,45 @@ worker.onmessage = ({ data }) => {
 const engine = new CaptureEngine({
   targetFps: 24,
   onFrame: ({ buffer, width, height }) => {
-    if (pendingFrame) return; // drop frame if worker still busy
+    if (pendingFrame) return;
     pendingFrame = true;
     worker.postMessage({ buffer, width, height }, [buffer]);
   },
 });
 
-// ── Toolbar ───────────────────────────────────────────────
-const toolbar = new Toolbar(toolbarEl);
+// ── Scope visibility helpers ──────────────────────────────
+function updateWaveformLayout() {
+  const rgbVisible  = !document.getElementById('waveform-rgb').classList.contains('hidden');
+  const lumaVisible = !document.getElementById('waveform-luma').classList.contains('hidden');
+  const row = document.getElementById('waveform-row');
+  row.classList.toggle('hidden', !rgbVisible && !lumaVisible);
+}
 
-toolbar.onSourceChange(async (sourceId) => {
-  if (!sourceId) { engine.stop(); return; }
-  emptyState.classList.remove('hidden');
-  engine.cropRegion = null;
-  toolbar.setRegionInfo(null);
-  await engine.start(sourceId);
-  // Start capturing full frame until region is selected
-  emptyState.classList.add('hidden');
-});
+// ── Menu action handler (IPC from main process) ───────────
+window.screenScope.onMenuAction(async (action) => {
+  if (action.type === 'source-selected') {
+    emptyState.classList.remove('hidden');
+    engine.cropRegion = null;
+    regionInfo.textContent = '';
+    await engine.start(action.sourceId);
+    emptyState.classList.add('hidden');
 
-toolbar.onSelectRegion((sourceId) => {
-  if (!sourceId) return;
-  window.screenScope.startRegionSelect(sourceId);
+  } else if (action.type === 'scope-toggle') {
+    const section = document.getElementById(action.scope);
+    if (section) {
+      section.classList.toggle('hidden', !action.visible);
+      updateWaveformLayout();
+    }
+  }
 });
 
 // ── Region selection result ───────────────────────────────
 window.screenScope.onRegionSelected((region) => {
-  // region is normalised 0..1
   engine.setRegion(region);
 
   const sw = engine.sourceSize.width;
   const sh = engine.sourceSize.height;
-  toolbar.setRegionInfo({
-    pixelX:     Math.round(region.x * sw),
-    pixelY:     Math.round(region.y * sh),
-    pixelWidth:  Math.round(region.width  * sw),
-    pixelHeight: Math.round(region.height * sh),
-  });
+  regionInfo.textContent =
+    `${Math.round(region.width * sw)}×${Math.round(region.height * sh)}` +
+    ` @ (${Math.round(region.x * sw)}, ${Math.round(region.y * sh)})`;
 });

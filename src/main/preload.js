@@ -10,6 +10,12 @@ contextBridge.exposeInMainWorld('screenScope', {
     ipcRenderer.on('region-selected', (_event, region) => callback(region));
   },
 
+  onMenuAction: (callback) => {
+    ipcRenderer.on('menu-action', (_event, action) => callback(action));
+  },
+
+  refreshSources: () => ipcRenderer.send('refresh-sources'),
+
   // Used by the region selector window
   confirmRegion: (region) => ipcRenderer.send('region-confirmed', region),
   cancelRegionSelect: () => ipcRenderer.send('region-cancelled'),

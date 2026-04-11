@@ -9,26 +9,6 @@
 <body>
   <div id="app">
 
-    <!-- Toolbar -->
-    <div id="toolbar">
-      <select id="source-select"></select>
-      <button id="btn-refresh" title="Refresh source list">↺</button>
-      <button id="btn-select-region">Select Region</button>
-      <span id="region-info"></span>
-
-      <div id="scope-toggles">
-        <button class="scope-toggle active" data-target="vectorscope-section">Vectorscope</button>
-        <button class="scope-toggle active" data-target="waveform-rgb">RGB</button>
-        <button class="scope-toggle active" data-target="waveform-luma">Luma</button>
-      </div>
-
-      <label id="always-on-top-label">
-        <input type="checkbox" id="chk-always-on-top" />
-        Always on top
-      </label>
-      <span id="fps-display">— fps</span>
-    </div>
-
     <!-- Scopes area -->
     <div id="scope-area">
 
@@ -44,7 +24,7 @@
             <circle cx="12" cy="12" r="10"/>
             <path d="M12 8v4l3 3"/>
           </svg>
-          <span>Select a source and region to begin</span>
+          <span>Select a source via the Sources menu to begin</span>
         </div>
       </div>
 
@@ -60,6 +40,12 @@
         </div>
       </div>
 
+    </div>
+
+    <!-- Status bar -->
+    <div id="status-bar">
+      <span id="region-info"></span>
+      <span id="fps-display">— fps</span>
     </div>
 
   </div>
