@@ -1,6 +1,6 @@
 {
   "name": "screenscope",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Real-time vectorscope and waveform monitor using screen capture",
   "main": "src/main/main.js",
   "scripts": {
