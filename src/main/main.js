@@ -21,6 +21,25 @@ const scopeVisibility = { vectorscope: true, rgb: true, luma: true };
 let alwaysOnTop = false;
 
 async function buildMenu() {
+  // macOS uses the HTML toolbar — just set the standard app menu
+  if (process.platform === 'darwin') {
+    Menu.setApplicationMenu(Menu.buildFromTemplate([{
+      label: app.name,
+      submenu: [
+        { role: 'about' },
+        { type: 'separator' },
+        { role: 'services' },
+        { type: 'separator' },
+        { role: 'hide' },
+        { role: 'hideOthers' },
+        { role: 'unhide' },
+        { type: 'separator' },
+        { role: 'quit' },
+      ],
+    }]));
+    return;
+  }
+
   let sources = [];
   try { sources = await getSources(); } catch (_) { /* ignore */ }
 
@@ -104,24 +123,7 @@ async function buildMenu() {
     },
   ];
 
-  if (process.platform === 'darwin') {
-    template.unshift({
-      label: app.name,
-      submenu: [
-        { role: 'about' },
-        { type: 'separator' },
-        { role: 'services' },
-        { type: 'separator' },
-        { role: 'hide' },
-        { role: 'hideOthers' },
-        { role: 'unhide' },
-        { type: 'separator' },
-        { role: 'quit' },
-      ],
-    });
-  } else {
-    template.push({ label: 'App', submenu: [{ role: 'quit' }] });
-  }
+  template.push({ label: 'App', submenu: [{ role: 'quit' }] });
 
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
@@ -133,6 +135,7 @@ function createMainWindow() {
     minWidth: 300,
     minHeight: 200,
     backgroundColor: '#0e0e0e',
+    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
