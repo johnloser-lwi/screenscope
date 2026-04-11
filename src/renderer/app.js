@@ -34,6 +34,23 @@ ro.observe(canvasVec.parentElement);
 ro.observe(canvasLuma.parentElement);
 ro.observe(canvasRGB.parentElement);
 
+// ── Scope toggles ─────────────────────────────────────────
+function updateWaveformLayout() {
+  const rgbVisible  = !document.getElementById('waveform-rgb').classList.contains('hidden');
+  const lumaVisible = !document.getElementById('waveform-luma').classList.contains('hidden');
+  const row = document.getElementById('waveform-row');
+  row.classList.toggle('hidden', !rgbVisible && !lumaVisible);
+}
+
+document.querySelectorAll('.scope-toggle').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const section = document.getElementById(btn.dataset.target);
+    const isHidden = section.classList.toggle('hidden');
+    btn.classList.toggle('active', !isHidden);
+    updateWaveformLayout();
+  });
+});
+
 // ── Worker ────────────────────────────────────────────────
 const worker = new Worker(
   new URL('../worker/analyzer.worker.js', import.meta.url),

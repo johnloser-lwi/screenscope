@@ -18,8 +18,8 @@ function createMainWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 900,
-    minWidth: 800,
-    minHeight: 600,
+    minWidth: 300,
+    minHeight: 200,
     backgroundColor: '#0e0e0e',
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     webPreferences: {

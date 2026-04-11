@@ -78,6 +78,11 @@ export class WaveformRGBScope {
     this._texDataG = null;
     this._texDataB = null;
     this._gain = 10.0;
+    this._mode = 'parade'; // 'parade' | 'overlay'
+  }
+
+  setMode(mode) {
+    this._mode = mode;
   }
 
   _makeTex(gl) {
@@ -130,6 +135,64 @@ export class WaveformRGBScope {
     gl.enable(gl.BLEND);
     gl.bindVertexArray(this._vao);
 
+    if (this._mode === 'parade') {
+      this._renderParade(cw, ch);
+    } else {
+      this._renderOverlay(cw, ch);
+    }
+
+    gl.disable(gl.BLEND);
+    gl.bindVertexArray(null);
+  }
+
+  _renderParade(cw, ch) {
+    const gl = this.gl;
+    const panelW = Math.floor(cw / 3);
+
+    const channels = [
+      { tex: this._texR, color: [1.0, 0.15, 0.15] },
+      { tex: this._texG, color: [0.15, 1.0, 0.15] },
+      { tex: this._texB, color: [0.15, 0.4,  1.0] },
+    ];
+
+    const gridHeightLoc = gl.getUniformLocation(this._gridProg, 'u_height');
+    const histLoc = gl.getUniformLocation(this._prog, 'u_histogram');
+    const colLoc  = gl.getUniformLocation(this._prog, 'u_color');
+    const gainLoc = gl.getUniformLocation(this._prog, 'u_gain');
+
+    gl.enable(gl.SCISSOR_TEST);
+
+    channels.forEach(({ tex, color }, i) => {
+      const x = i * panelW + (i > 0 ? 1 : 0); // 1px separator gap after first panel
+      const w = i === 2 ? (cw - x) : (panelW - (i < 2 ? 1 : 0));
+
+      gl.viewport(x, 0, w, ch);
+      gl.scissor(x, 0, w, ch);
+
+      // Grid
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      gl.useProgram(this._gridProg);
+      gl.uniform1f(gridHeightLoc, ch);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+      // Channel
+      gl.blendFunc(gl.ONE, gl.ONE);
+      gl.useProgram(this._prog);
+      gl.uniform1f(gainLoc, this._gain);
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.uniform1i(histLoc, 0);
+      gl.uniform3fv(colLoc, color);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    });
+
+    gl.disable(gl.SCISSOR_TEST);
+    gl.viewport(0, 0, cw, ch);
+  }
+
+  _renderOverlay(cw, ch) {
+    const gl = this.gl;
+
     // Grid
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     gl.useProgram(this._gridProg);
@@ -157,9 +220,6 @@ export class WaveformRGBScope {
       gl.uniform3fv(colLoc, color);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     }
-
-    gl.disable(gl.BLEND);
-    gl.bindVertexArray(null);
   }
 
   resize(w, h) {
