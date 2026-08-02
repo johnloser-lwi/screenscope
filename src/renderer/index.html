@@ -16,11 +16,19 @@
       <button id="btn-select-region">Select Region</button>
       <span id="region-info"></span>
 
-      <div id="scope-toggles">
-        <button class="scope-toggle active" data-target="vectorscope-section">Vectorscope</button>
-        <button class="scope-toggle active" data-target="waveform-rgb">RGB</button>
-        <button class="scope-toggle active" data-target="waveform-luma">Luma</button>
-      </div>
+      <label class="toolbar-field">
+        Layout
+        <select id="layout-select"></select>
+      </label>
+      <label class="toolbar-field">
+        Smoothing
+        <select id="smoothing-select">
+          <option value="off">Off</option>
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+        </select>
+      </label>
 
       <label id="always-on-top-label">
         <input type="checkbox" id="chk-always-on-top" />
@@ -29,37 +37,16 @@
       <span id="fps-display">— fps</span>
     </div>
 
-    <!-- Scopes area -->
-    <div id="scope-area">
+    <!-- Scopes area — cells are created at runtime from the layout preset -->
+    <div id="scope-area"></div>
 
-      <!-- Vectorscope -->
-      <div id="vectorscope-section">
-        <canvas id="canvas-vectorscope"></canvas>
-        <div class="graticule" id="graticule"></div>
-        <span class="scope-label">Vectorscope</span>
-
-        <div id="empty-state">
-          <svg width="40" height="40" viewBox="0 0 24 24" fill="none"
-               stroke="currentColor" stroke-width="1.5">
-            <circle cx="12" cy="12" r="10"/>
-            <path d="M12 8v4l3 3"/>
-          </svg>
-          <span id="empty-hint">Select a source and region to begin</span>
-        </div>
-      </div>
-
-      <!-- Waveforms -->
-      <div id="waveform-row">
-        <div class="waveform-section" id="waveform-rgb">
-          <canvas id="canvas-waveform-rgb"></canvas>
-          <span class="scope-label">Waveform &mdash; RGB</span>
-        </div>
-        <div class="waveform-section" id="waveform-luma">
-          <canvas id="canvas-waveform-luma"></canvas>
-          <span class="scope-label">Waveform &mdash; Luma</span>
-        </div>
-      </div>
-
+    <div id="empty-state">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="1.5">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M12 8v4l3 3"/>
+      </svg>
+      <span id="empty-hint">Select a source and region to begin</span>
     </div>
 
     <!-- Status bar (Windows only — hidden on macOS via body class) -->

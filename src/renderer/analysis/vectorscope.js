@@ -1,5 +1,5 @@
 /**
- * Compute a Cb/Cr vectorscope histogram using BT.601.
+ * Compute a Cb/Cr vectorscope histogram using BT.709.
  * @param {Uint8ClampedArray} rgba
  * @param {number} width
  * @param {number} height

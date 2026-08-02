@@ -1,42 +1,54 @@
 import { Toolbar } from './ui/Toolbar.js';
 import { CaptureEngine } from './capture/CaptureEngine.js';
-import { VectorscopeScope } from './scopes/VectorscopeScope.js';
-import { WaveformScope } from './scopes/WaveformScope.js';
-import { WaveformRGBScope } from './scopes/WaveformRGBScope.js';
+import { LayoutStore, PRESETS, DEFAULT_LAYOUT } from './layout/LayoutStore.js';
+import { ScopeGrid } from './layout/ScopeGrid.js';
+import { getScope, analysesFor } from './scopes/registry.js';
 
 // ── Platform class on body (drives CSS show/hide) ─────────
 const platform = window.screenScope.platform();
 document.body.classList.add(platform);
 
-// ── DOM refs ──────────────────────────────────────────────
-const emptyState  = document.getElementById('empty-state');
-const emptyHint   = document.getElementById('empty-hint');
-const canvasVec   = document.getElementById('canvas-vectorscope');
-const graticule   = document.getElementById('graticule');
-const canvasRGB   = document.getElementById('canvas-waveform-rgb');
-const canvasLuma  = document.getElementById('canvas-waveform-luma');
+const emptyState = document.getElementById('empty-state');
+const emptyHint  = document.getElementById('empty-hint');
+const scopeArea  = document.getElementById('scope-area');
 
-// ── Scopes ────────────────────────────────────────────────
-const scopeVec  = new VectorscopeScope(canvasVec, graticule);
-const scopeLuma = new WaveformScope(canvasLuma);
-const scopeRGB  = new WaveformRGBScope(canvasRGB);
+// ── Persisted settings ────────────────────────────────────
+const settings = await window.screenScope.getSettings();
+let smoothing = settings.smoothing || 'medium';
 
-// ── ResizeObserver — keep canvas pixels = CSS pixels ──────
-const ro = new ResizeObserver((entries) => {
-  for (const entry of entries) {
-    const { width, height } = entry.contentRect;
-    const dpr = window.devicePixelRatio || 1;
-    const w = Math.round(width * dpr);
-    const h = Math.round(height * dpr);
-    const target = entry.target;
-    if (target === canvasVec.parentElement)  scopeVec.resize(w, h);
-    if (target === canvasLuma.parentElement) scopeLuma.resize(w, h);
-    if (target === canvasRGB.parentElement)  scopeRGB.resize(w, h);
-  }
+// ── Layout ────────────────────────────────────────────────
+const store = new LayoutStore(settings.layout || DEFAULT_LAYOUT);
+const grid = new ScopeGrid(scopeArea, store);
+grid.setSmoothing(smoothing);
+
+const presetList = Object.entries(PRESETS).map(([id, p]) => ({ id, label: p.label }));
+
+function publishLayout() {
+  window.screenScope.notifyLayout({
+    preset: store.preset,
+    presets: presetList,
+    smoothing,
+  });
+  window.screenScope.setSettings({ layout: store.state, smoothing });
+}
+
+// Only the analyses some visible scope actually asked for get computed
+function syncWorkerAnalyses() {
+  worker.postMessage({ type: 'set-enabled', enabled: analysesFor(store.cells) });
+}
+
+store.subscribe(() => {
+  syncWorkerAnalyses();
+  publishLayout();
+  if (platform === 'darwin') toolbar.setPreset(store.preset);
 });
-ro.observe(canvasVec.parentElement);
-ro.observe(canvasLuma.parentElement);
-ro.observe(canvasRGB.parentElement);
+
+function setSmoothing(level) {
+  smoothing = level;
+  grid.setSmoothing(level);
+  publishLayout();
+  if (platform === 'darwin') toolbar.setSmoothing(level);
+}
 
 // ── Worker ────────────────────────────────────────────────
 const worker = new Worker(
@@ -48,13 +60,14 @@ let pendingFrame = false;
 let frameCount = 0;
 
 worker.onmessage = ({ data }) => {
-  const { lumaData, rData, gData, bData, vectorData, width } = data;
-  scopeVec.render(vectorData);
-  scopeLuma.render(lumaData, width);
-  scopeRGB.render(rData, gData, bData, width);
+  for (const cell of grid.activeCells()) {
+    getScope(cell.scopeId).draw(cell.scope, data);
+  }
   frameCount++;
   pendingFrame = false;
 };
+
+syncWorkerAnalyses();
 
 // ── Capture engine ────────────────────────────────────────
 const engine = new CaptureEngine({
@@ -66,16 +79,26 @@ const engine = new CaptureEngine({
   },
 });
 
-// ── Scope visibility helpers ──────────────────────────────
-function updateWaveformLayout() {
-  const rgbVisible  = !document.getElementById('waveform-rgb').classList.contains('hidden');
-  const lumaVisible = !document.getElementById('waveform-luma').classList.contains('hidden');
-  document.getElementById('waveform-row').classList.toggle('hidden', !rgbVisible && !lumaVisible);
+// ── FPS readout ───────────────────────────────────────────
+function startFpsTimer(show) {
+  let lastTick = performance.now();
+  setInterval(() => {
+    const now = performance.now();
+    const fps = (frameCount / ((now - lastTick) / 1000)).toFixed(0);
+    show(fps, frameCount > 0);
+    frameCount = 0;
+    lastTick = now;
+  }, 1000);
 }
 
 // ── macOS: HTML toolbar ───────────────────────────────────
+let toolbar = null;
+
 if (platform === 'darwin') {
-  const toolbar = new Toolbar(document.getElementById('toolbar'));
+  toolbar = new Toolbar(document.getElementById('toolbar'));
+  toolbar.setPreset(store.preset);
+  toolbar.setSmoothing(smoothing);
+  toolbar.setAlwaysOnTop(settings.alwaysOnTop);
 
   toolbar.onSourceChange(async (sourceId) => {
     if (!sourceId) { engine.stop(); return; }
@@ -91,6 +114,9 @@ if (platform === 'darwin') {
     window.screenScope.startRegionSelect(sourceId);
   });
 
+  toolbar.onPresetChange((preset) => store.setPreset(preset));
+  toolbar.onSmoothingChange(setSmoothing);
+
   window.screenScope.onRegionSelected((region) => {
     engine.setRegion(region);
     const sw = engine.sourceSize.width;
@@ -103,46 +129,19 @@ if (platform === 'darwin') {
     });
   });
 
-  // Scope toggle buttons in HTML toolbar
-  document.querySelectorAll('.scope-toggle').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const section = document.getElementById(btn.dataset.target);
-      const isHidden = section.classList.toggle('hidden');
-      btn.classList.toggle('active', !isHidden);
-      updateWaveformLayout();
-    });
-  });
-
-  // FPS display is in the toolbar on macOS
-  let lastFpsTick = performance.now();
-  const fpsDisplay = document.getElementById('fps-display');
-  setInterval(() => {
-    const now = performance.now();
-    const elapsed = (now - lastFpsTick) / 1000;
-    const fps = (frameCount / elapsed).toFixed(0);
-    fpsDisplay.textContent = `${fps} fps`;
-    fpsDisplay.classList.toggle('active', frameCount > 0);
-    frameCount = 0;
-    lastFpsTick = now;
-  }, 1000);
+  startFpsTimer((fps, active) => toolbar.setFps(fps, active));
 
 // ── Windows/Linux: native menu + status bar ───────────────
 } else {
   emptyHint.textContent = 'Select a source via the Sources menu to begin';
 
-  const statusRegionInfo  = document.getElementById('status-region-info');
-  const statusFpsDisplay  = document.getElementById('status-fps-display');
+  const statusRegionInfo = document.getElementById('status-region-info');
+  const statusFpsDisplay = document.getElementById('status-fps-display');
 
-  let lastFpsTick = performance.now();
-  setInterval(() => {
-    const now = performance.now();
-    const elapsed = (now - lastFpsTick) / 1000;
-    const fps = (frameCount / elapsed).toFixed(0);
+  startFpsTimer((fps, active) => {
     statusFpsDisplay.textContent = `${fps} fps`;
-    statusFpsDisplay.classList.toggle('active', frameCount > 0);
-    frameCount = 0;
-    lastFpsTick = now;
-  }, 1000);
+    statusFpsDisplay.classList.toggle('active', active);
+  });
 
   window.screenScope.onMenuAction(async (action) => {
     if (action.type === 'source-selected') {
@@ -152,12 +151,11 @@ if (platform === 'darwin') {
       await engine.start(action.sourceId);
       emptyState.classList.add('hidden');
 
-    } else if (action.type === 'scope-toggle') {
-      const section = document.getElementById(action.scope);
-      if (section) {
-        section.classList.toggle('hidden', !action.visible);
-        updateWaveformLayout();
-      }
+    } else if (action.type === 'set-preset') {
+      store.setPreset(action.preset);
+
+    } else if (action.type === 'set-smoothing') {
+      setSmoothing(action.level);
     }
   });
 
@@ -170,3 +168,6 @@ if (platform === 'darwin') {
       ` @ (${Math.round(region.x * sw)}, ${Math.round(region.y * sh)})`;
   });
 }
+
+// Seed main's menu mirror with the restored layout
+publishLayout();

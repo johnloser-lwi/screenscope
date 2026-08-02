@@ -22,5 +22,11 @@ contextBridge.exposeInMainWorld('screenScope', {
 
   setAlwaysOnTop: (flag) => ipcRenderer.send('set-always-on-top', flag),
 
+  getSettings: () => ipcRenderer.invoke('get-settings'),
+  setSettings: (partial) => ipcRenderer.send('set-settings', partial),
+
+  // Lets main mirror the renderer's layout state for its menu checkmarks
+  notifyLayout: (state) => ipcRenderer.send('layout-changed', state),
+
   platform: () => process.platform,
 });

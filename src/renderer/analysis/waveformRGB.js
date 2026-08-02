@@ -4,7 +4,8 @@
  * @param {number} width
  * @param {number} height
  * @returns {{ r: Float32Array, g: Float32Array, b: Float32Array }}
- *   Each array is length width*256, normalised 0..1
+ *   Each array is length width*256 indexed [level*width+x] (texture order),
+ *   normalised 0..1
  */
 export function computeWaveformRGB(rgba, width, height) {
   const r = new Float32Array(width * 256);
@@ -15,9 +16,11 @@ export function computeWaveformRGB(rgba, width, height) {
     const row = y * width * 4;
     for (let x = 0; x < width; x++) {
       const i = row + x * 4;
-      r[x * 256 + rgba[i]]++;
-      g[x * 256 + rgba[i + 1]]++;
-      b[x * 256 + rgba[i + 2]]++;
+      // Channel values are already integers, so there is nothing to splat —
+      // continuity comes from the vertical blur in TracePipeline.
+      r[rgba[i]     * width + x]++;
+      g[rgba[i + 1] * width + x]++;
+      b[rgba[i + 2] * width + x]++;
     }
   }
 

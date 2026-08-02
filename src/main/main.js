@@ -9,6 +9,7 @@ const {
 } = require('electron');
 const path = require('path');
 const { getSources } = require('./captureManager');
+const settings = require('./settings');
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
@@ -16,9 +17,24 @@ let mainWindow = null;
 let selectorWindow = null;
 
 // ── Menu state ────────────────────────────────────────────
+// The renderer's LayoutStore is authoritative; this is only a mirror so the
+// native menu can show the right radio checkmarks. It arrives via
+// 'layout-changed', which also carries the preset list so the menu never has
+// to duplicate the renderer's layout definitions.
 let activeSourceId = null;
-const scopeVisibility = { vectorscope: true, rgb: true, luma: true };
+let layoutState = { preset: null, presets: [], smoothing: 'medium' };
 let alwaysOnTop = false;
+
+const SMOOTHING_LEVELS = [
+  { id: 'off',    label: 'Off' },
+  { id: 'low',    label: 'Low' },
+  { id: 'medium', label: 'Medium' },
+  { id: 'high',   label: 'High' },
+];
+
+function send(action) {
+  if (mainWindow) mainWindow.webContents.send('menu-action', action);
+}
 
 async function buildMenu() {
   // macOS uses the HTML toolbar — just set the standard app menu
@@ -82,42 +98,33 @@ async function buildMenu() {
           checked: alwaysOnTop,
           click: (item) => {
             alwaysOnTop = item.checked;
+            settings.write({ alwaysOnTop });
             if (mainWindow) mainWindow.setAlwaysOnTop(alwaysOnTop);
           },
         },
         { type: 'separator' },
         {
-          label: 'Vectorscope',
-          type: 'checkbox',
-          checked: scopeVisibility.vectorscope,
-          click: (item) => {
-            scopeVisibility.vectorscope = item.checked;
-            if (mainWindow) mainWindow.webContents.send('menu-action', {
-              type: 'scope-toggle', scope: 'vectorscope-section', visible: item.checked,
-            });
-          },
+          label: 'Layout',
+          submenu: layoutState.presets.map((p) => ({
+            label: p.label,
+            type: 'radio',
+            checked: p.id === layoutState.preset,
+            click: () => send({ type: 'set-preset', preset: p.id }),
+          })),
         },
         {
-          label: 'RGB Waveform',
-          type: 'checkbox',
-          checked: scopeVisibility.rgb,
-          click: (item) => {
-            scopeVisibility.rgb = item.checked;
-            if (mainWindow) mainWindow.webContents.send('menu-action', {
-              type: 'scope-toggle', scope: 'waveform-rgb', visible: item.checked,
-            });
-          },
+          label: 'Smoothing',
+          submenu: SMOOTHING_LEVELS.map((s) => ({
+            label: s.label,
+            type: 'radio',
+            checked: s.id === layoutState.smoothing,
+            click: () => send({ type: 'set-smoothing', level: s.id }),
+          })),
         },
+        { type: 'separator' },
         {
-          label: 'Luma Waveform',
-          type: 'checkbox',
-          checked: scopeVisibility.luma,
-          click: (item) => {
-            scopeVisibility.luma = item.checked;
-            if (mainWindow) mainWindow.webContents.send('menu-action', {
-              type: 'scope-toggle', scope: 'waveform-luma', visible: item.checked,
-            });
-          },
+          label: 'Assign a scope to a cell by clicking its label',
+          enabled: false,
         },
       ],
     },
@@ -231,7 +238,17 @@ ipcMain.on('refresh-sources', () => buildMenu());
 
 ipcMain.on('set-always-on-top', (_event, flag) => {
   alwaysOnTop = flag;
+  settings.write({ alwaysOnTop });
   if (mainWindow) mainWindow.setAlwaysOnTop(flag);
+});
+
+ipcMain.handle('get-settings', () => settings.read());
+
+ipcMain.on('set-settings', (_event, partial) => settings.write(partial));
+
+ipcMain.on('layout-changed', (_event, state) => {
+  layoutState = { ...layoutState, ...state };
+  if (process.platform !== 'darwin') buildMenu();
 });
 
 ipcMain.handle('start-region-select', (_event, sourceId) => {
@@ -257,12 +274,16 @@ ipcMain.on('region-cancelled', () => {
 
 app.whenReady().then(async () => {
   await checkScreenRecordingPermission();
+  alwaysOnTop = settings.read().alwaysOnTop;
   createMainWindow();
+  if (alwaysOnTop && mainWindow) mainWindow.setAlwaysOnTop(true);
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
   });
 });
+
+app.on('before-quit', () => settings.flush());
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();

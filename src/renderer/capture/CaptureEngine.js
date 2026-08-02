@@ -96,10 +96,10 @@ export class CaptureEngine {
 
     if (cropW <= 0 || cropH <= 0) return;
 
+    // getImageData allocates a fresh buffer each call, so this one can be
+    // handed straight to the worker as a transferable — no copy needed.
     const imageData = this.ctx.getImageData(cropX, cropY, cropW, cropH);
-    // Transfer the buffer zero-copy to the worker
-    const buffer = imageData.data.buffer.slice(0);
-    this.onFrame({ buffer, width: cropW, height: cropH });
+    this.onFrame({ buffer: imageData.data.buffer, width: cropW, height: cropH });
   }
 
   stop() {

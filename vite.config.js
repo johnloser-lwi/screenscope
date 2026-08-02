@@ -7,6 +7,9 @@ export default defineConfig({
   build: {
     outDir: resolve(__dirname, 'dist/renderer'),
     emptyOutDir: true,
+    // Only ever runs in Electron's bundled Chromium, and app.js loads its
+    // persisted settings with a top-level await.
+    target: 'esnext',
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'src/renderer/index.html'),
